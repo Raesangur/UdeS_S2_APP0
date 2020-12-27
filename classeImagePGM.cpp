@@ -62,6 +62,8 @@ ImagePGM::ImagePGM(const std::string& nomFichier) : m_nomFichier{nomFichier}
             // Ignorer la ligne s'il s'agit d'un commentaire
             if(tampon[0] == '#')
             {
+                // Facultatif, ajout des commentaires d'en-tête
+                m_commentaires.emplace_back(tampon);
                 continue;    // Le mot-clé `continue` skip à la prochaine boucle
             }
 
@@ -104,16 +106,47 @@ ImagePGM::ImagePGM(const std::string& nomFichier) : m_nomFichier{nomFichier}
     fclose(fichier);
 }
 
-void Sauvegarder(const std::string& nomFichier)
+void ImagePGM::Sauvegarde(const std::string& nomFichier)
 {
     // Ouverture du fichier en écriture
     FILE* fichier = fopen(nomFichier.c_str(), "w");
-    if (fichier == nullptr)
+    if(fichier == nullptr)
     {
         throw std::exception();
     }
 
+    // Écriture des métadonnées
+    for(const std::string& comm : m_commentaires)
+    {
+        // Écriture des commentaires (facultatif)
+        fprintf(fichier, "%s\n", comm.c_str());
+    }
 
+    // clang-format est un outil de formatting automatique de code, ignorez les petits commentaires
+    // d'instruction
+    /* clang-format off */
+    fprintf(fichier,
+            "P2\n"
+            "%" PRIu16 " %" PRIu16 "\n"
+            "%" PRIu16 "\n",
+            m_largeur, m_hauteur,
+            m_maxVal);
+    /* clang-format on */
+
+    std::string ligne;
+    ligne.reserve(sizeof("65535") * m_largeur);
+    // Le sizeof retourne 6 à cause du terminating character '\0', nous n'en voulont pas, mais nous
+    // voulons des espaces à la place, donc ça tombe bien.
+
+    for (int i = 0; i < m_hauteur; i++)
+    {
+        for (int j = 0; j < m_largeur; j++)
+        {
+            ligne += std::to_string(m_image[i * m_largeur + j]) + ' ';
+        }
+        fprintf(fichier, "%s\n", ligne.c_str());
+        ligne.clear();
+    }
 }
 
 ImagePGM::~ImagePGM()
