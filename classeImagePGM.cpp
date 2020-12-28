@@ -205,6 +205,23 @@ void ImagePGM::Sauvegarde(const std::string& nomFichier)
 }
 
 
+const std::string& ImagePGM::Get_NomFichier()
+{
+    return m_nomFichier;
+}
+uint16_t ImagePGM::Get_Hauteur()
+{
+    return m_hauteur;
+}
+uint16_t ImagePGM::Get_Largeur()
+{
+    return m_largeur;
+}
+uint16_t ImagePGM::Get_MaxVal()
+{
+    return m_maxVal;
+}
+
 // Fonctions de l'APP4 à réimplémenter
 // Une seule de ces fonctions devra être faite dans le cadre de cet APP0.
 void ImagePGM::CreerNegatif()
