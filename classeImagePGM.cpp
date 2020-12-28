@@ -1,5 +1,7 @@
 ﻿#include "classeImagePGM.hpp"
+#include <algorithm>
 #include <cinttypes>
+#include <cstdint>
 #include <cstdio>
 
 uint16_t& ImagePGM::Pixel(uint16_t ligne, uint16_t colonne) const
@@ -104,8 +106,13 @@ ImagePGM::ImagePGM(const ImagePGM& autreImage)
 : m_nomFichier{autreImage.m_nomFichier},
   m_commentaires{autreImage.m_commentaires},
   m_hauteur{autreImage.m_hauteur},
-  m_largeur{autreImage.m_largeur}
+  m_largeur{autreImage.m_largeur},
+  m_maxVal{autreImage.m_maxVal}
 {
+    // Une fois tous les membres copiés, il reste à allouer la mémoire du nouvel objet, et y copier
+    // tous les pixels de l'autre image.
+    m_image = new uint16_t[m_largeur * m_hauteur];
+
     for(int i = 0; i < m_hauteur; i++)
     {
         for(int j = 0; j < m_largeur; j++)
@@ -123,12 +130,14 @@ ImagePGM::~ImagePGM()
 
 bool ImagePGM::operator==(const ImagePGM& autreImage)
 {
+    // On compare en premier les métadonnées
     if((m_largeur != autreImage.m_largeur) || (m_hauteur != autreImage.m_hauteur)
        || (m_maxVal != autreImage.m_maxVal))
     {
         return false;
     }
 
+    // Puis on compare chaque pixel individuellement
     for(int i = 0; i < m_hauteur; i++)
     {
         for(int j = 0; j < m_largeur; j++)
@@ -204,8 +213,108 @@ void ImagePGM::CreerNegatif()
         }
     }
 }
-int      ImagePGM::CreerHistogramme();
-uint16_t ImagePGM::CouleurPreponderante();
-int      ImagePGM::EclaircirNoircir();
-int      ImagePGM::Pivoter90(bool gaucheDroite);
-int      ImagePGM::Extraire(int ligneCoin1, int colonneCoin1, int ligneCoin2, int colonneCoin2);
+
+std::vector<uint16_t> ImagePGM::CreerHistogramme()
+{
+    // Crée un vecteur (tableau à taille variable), et réserve la taille nécessaire, en
+    // initialisant tous les éléments à 0.
+    std::vector<uint16_t> histogramme(m_maxVal, 0);
+
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            // Incrémente la quantité à l'intensité du pixel
+            histogramme[Pixel(i, j)]++;
+        }
+    }
+
+    return histogramme;
+}
+
+uint16_t ImagePGM::CouleurPreponderante()
+{
+    std::vector<uint16_t> histogramme = CreerHistogramme();
+
+    int indexOfGreater = 0;
+    for(int i = 0; i < histogramme.size(); i++)
+    {
+        // Regarde si la valeur actuelle est plus grande que la dernier plus grande valeur trouvée
+        if(histogramme[i] > histogramme[indexOfGreater])
+        {
+            indexOfGreater = i;
+        }
+    }
+
+    // L'index de l'histogramme représente l'intensité lumineuse
+    return indexOfGreater;
+}
+
+void ImagePGM::EclaircirNoircir(int32_t valeur)
+{
+    if((valeur > m_maxVal) || (valeur < -m_maxVal))
+    {
+        throw std::exception();
+    }
+
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            int32_t newVal = valeur + Pixel(i, j);
+
+            // Clipping de la valeur entre 0 et m_maxVal
+            // (qu'il a fallu caster pour qu'il soit du même type que newVal)
+            Pixel(i, j) = std::max(0, std::min(newVal, (int32_t)m_maxVal));
+        }
+    }
+}
+
+void ImagePGM::Pivoter90(bool gaucheDroite)
+{
+    // Déréférencer `this` nous donne directement l'objet, qu'on passe au constructeur de la classe
+    // pour en faire une copie.
+    ImagePGM copieOriginelle(*this);
+    std::swap(m_hauteur, m_largeur);    // The old switcharoo
+
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            if(gaucheDroite == ANTIHORAIRE)
+            {
+                Pixel(i, j) = copieOriginelle.Pixel(j, m_hauteur - i - 1);
+            }
+            else
+            {
+                Pixel(i, j) = copieOriginelle.Pixel(m_largeur - j - 1, i);
+            }
+        }
+    }
+}
+
+ImagePGM ImagePGM::Extraire(int ligneCoin1, int colonneCoin1, int ligneCoin2, int colonneCoin2)
+{
+    if((ligneCoin1 > ligneCoin2) || (colonneCoin1 > colonneCoin2))
+    {
+        throw std::exception();
+    }
+
+    // Création de la sous-image et copie des métadonnées
+    ImagePGM sousImage;
+    sousImage.m_commentaires = m_commentaires;
+    sousImage.m_hauteur      = ligneCoin2 - ligneCoin1;
+    sousImage.m_largeur      = colonneCoin2 - colonneCoin1;
+    sousImage.m_maxVal       = m_maxVal;
+    sousImage.m_image        = new uint16_t[sousImage.m_hauteur * sousImage.m_largeur];
+
+    for(int i = ligneCoin1; i < ligneCoin2; i++)
+    {
+        for(int j = colonneCoin1; j < colonneCoin2; j++)
+        {
+            sousImage.Pixel(i - ligneCoin1, j - colonneCoin1) = Pixel(i, j);
+        }
+    }
+
+    return sousImage;
+}
