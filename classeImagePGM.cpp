@@ -37,6 +37,10 @@ ImagePGM::ImagePGM(const std::string& nomFichier) : m_nomFichier{nomFichier}
     }
 
     // Création d'un tampon initial pour la lecture des métadonnées
+    // (Ce tampon pourraît être alloué dynamiquement pour permettre la lecture de lignes plus
+    //  longues dans les cas où il y aurait beaucoup de pixels par lignes. Cependant, l'utilisation
+    //  de fscanf après la lecture des métadonnées permet de skipper l'utilisation du buffer et sa
+    //  taille limitée ne pose pas de problèmes.)
     uint16_t numLigne = 0;
     char     tampon[128];
     int      i = 0;

@@ -17,7 +17,6 @@ private:
     // Optionnel, seulement si vous voulez garder les commentaires d'en-tête
     std::vector<std::string> m_commentaires;
 
-private:
     uint16_t& Pixel(uint16_t ligne, uint16_t colonne) const;
 
 public:
