@@ -2,20 +2,14 @@
 #include <cinttypes>
 #include <cstdio>
 
-uint16_t& ImagePGM::Pixel(uint16_t ligne, uint16_t colonne)
+uint16_t& ImagePGM::Pixel(uint16_t ligne, uint16_t colonne) const
 {
-    // Juste une copie du pointeur qui facilitera les opérations arithmétiques
-    uint16_t* pPixel = m_image;
-
     // L'image n'as pas de dimensions de base. Nous devons donc simuler ces dimensions.
     // Un tableau int x[3][5] est un tableau de 3 int[5] successifs
     // Se déplacer dans le tableau à l'aide d'un pointeur nécessite de déplacer le pointeur
     // par la taille d'un int[5], et non pas un simple int.
     // Nous devons donc multiplier la colonne par la largeur de l'image.
-    pPixel += ligne;
-    pPixel += colonne * m_largeur;
-
-    return *pPixel;
+    return m_image[ligne * m_largeur + colonne];
 }
 
 void ImagePGM::Imprime()
@@ -24,7 +18,7 @@ void ImagePGM::Imprime()
     {
         for(int j = 0; j < m_largeur; j++)
         {
-            printf("%" PRIu16 " ", m_image[i * m_largeur + j]);
+            printf("%" PRIu16 " ", Pixel(i, j));
         }
         printf("\n");
     }
@@ -106,6 +100,54 @@ ImagePGM::ImagePGM(const std::string& nomFichier) : m_nomFichier{nomFichier}
     fclose(fichier);
 }
 
+ImagePGM::ImagePGM(const ImagePGM& autreImage)
+: m_nomFichier{autreImage.m_nomFichier},
+  m_commentaires{autreImage.m_commentaires},
+  m_hauteur{autreImage.m_hauteur},
+  m_largeur{autreImage.m_largeur}
+{
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            Pixel(i, j) = autreImage.Pixel(i, j);
+        }
+    }
+}
+
+ImagePGM::~ImagePGM()
+{
+    // Il faut libérer la mémoire!
+    delete[] m_image;
+}
+
+bool ImagePGM::operator==(const ImagePGM& autreImage)
+{
+    if((m_largeur != autreImage.m_largeur) || (m_hauteur != autreImage.m_hauteur)
+       || (m_maxVal != autreImage.m_maxVal))
+    {
+        return false;
+    }
+
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            if(Pixel(i, j) == autreImage.Pixel(i, j))
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool ImagePGM::operator!=(const ImagePGM& autreImage)
+{
+    return !(*this == autreImage);
+}
+
 void ImagePGM::Sauvegarde(const std::string& nomFichier)
 {
     // Ouverture du fichier en écriture
@@ -138,19 +180,32 @@ void ImagePGM::Sauvegarde(const std::string& nomFichier)
     // Le sizeof retourne 6 à cause du terminating character '\0', nous n'en voulont pas, mais nous
     // voulons des espaces à la place, donc ça tombe bien.
 
-    for (int i = 0; i < m_hauteur; i++)
+    for(int i = 0; i < m_hauteur; i++)
     {
-        for (int j = 0; j < m_largeur; j++)
+        for(int j = 0; j < m_largeur; j++)
         {
-            ligne += std::to_string(m_image[i * m_largeur + j]) + ' ';
+            ligne += std::to_string(Pixel(i, j)) + ' ';
         }
         fprintf(fichier, "%s\n", ligne.c_str());
         ligne.clear();
     }
 }
 
-ImagePGM::~ImagePGM()
+
+// Fonctions de l'APP4 à réimplémenter
+// Une seule de ces fonctions devra être faite dans le cadre de cet APP0.
+void ImagePGM::CreerNegatif()
 {
-    // Il faut libérer la mémoire!
-    delete[] m_image;
+    for(int i = 0; i < m_hauteur; i++)
+    {
+        for(int j = 0; j < m_largeur; j++)
+        {
+            Pixel(i, j) = m_maxVal - Pixel(i, j);
+        }
+    }
 }
+int      ImagePGM::CreerHistogramme();
+uint16_t ImagePGM::CouleurPreponderante();
+int      ImagePGM::EclaircirNoircir();
+int      ImagePGM::Pivoter90(bool gaucheDroite);
+int      ImagePGM::Extraire(int ligneCoin1, int colonneCoin1, int ligneCoin2, int colonneCoin2);
