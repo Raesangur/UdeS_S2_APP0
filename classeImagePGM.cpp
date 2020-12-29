@@ -202,6 +202,9 @@ void ImagePGM::Sauvegarde(const std::string& nomFichier)
         fprintf(fichier, "%s\n", ligne.c_str());
         ligne.clear();
     }
+    
+    // On n'oublie pas de fermer le fichier!
+    fclose(fichier);
 }
 
 
